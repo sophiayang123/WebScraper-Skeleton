@@ -5,25 +5,23 @@
  */
 package view;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import entity.Image;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
-import javax.servlet.ServletContext;
+import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import logic.ImageLogic;
 
 /**
- *Output image itself which stored in database. simply speaking, display pictures on webpage
+ *Only Display image information that in database
  * @author shutingyang
  */
-@WebServlet(name = "ImageDelivery", urlPatterns = {"/image/*"})
-public class ImageDelivery extends HttpServlet {
+@WebServlet(name = "ImageTable", urlPatterns = {"/ImageTable"})
+public class ImageTable extends HttpServlet {
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -41,9 +39,22 @@ public class ImageDelivery extends HttpServlet {
             /* TODO output your page here. You may use following sample code. */
             out.println("<!DOCTYPE html>");
             out.println("<html>");
-            out.println("<head>");          
+            out.println("<head>");
+            out.println("<title>Servlet ImageTable</title>");            
             out.println("</head>");
             out.println("<body>");
+            ImageLogic ilogic = new ImageLogic();
+            List<Image> all= ilogic.getAll();
+            
+            out.println("<table align=\"center\" border=\"0\">");
+            out.println("<table>");
+            out.println("<tbody>");     
+            out.printf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", "Id", "Name","Date","Feedid","Path");
+            for (Image a : all) {
+                out.printf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", a.getId(), a.getName(),a.getDate(),a.getFeedid(),a.getPath());
+            } 
+            out.println("</tbody>");
+            out.println("</table>");
             out.println("</body>");
             out.println("</html>");
         }
@@ -51,47 +62,17 @@ public class ImageDelivery extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method. Here we output images.
-     * 
-     * @param req servlet request
-     * @param resp servlet response
+     * Handles the HTTP <code>GET</code> method.
+     *
+     * @param request servlet request
+     * @param response servlet response
      * @throws ServletException if a servlet-specific error occurs
      * @throws IOException if an I/O error occurs
      */
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
-        ServletContext cntx= req.getServletContext();
-        // Get file path, but how?? 
-        String filename = System.getProperty("user.home")+"/Documents/Reddit Images/" + req.getPathInfo().substring(1); 
-        
-        // retrieve mimeType dynamically
-        String mime = cntx.getMimeType(filename);
-        
-        if (mime == null) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            return;
-        }
-        
-        resp.setContentType(mime);
-        File file2 = new File(filename);
-        try(                          
-            FileInputStream in = new FileInputStream(file2);
-            ){
-            resp.setContentLength((int)file2.length());
-            OutputStream out = resp.getOutputStream();
-            byte[] buf = new byte[1024];
-            int count = 0;
-            while ((count = in.read(buf)) >= 0) {
-                out.write(buf, 0, count);
-            }
-        }catch(FileNotFoundException e){
-            System.out.println(e);
-        }
-
-        // Copy the contents of the file to the output stream
-        //processRequest(req, resp);
+        processRequest(request, response);
     }
 
     /**

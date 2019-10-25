@@ -49,17 +49,21 @@ public class CreateAccount extends HttpServlet {
             out.println("<div style=\"text-align: center;\">");
             out.println("<div style=\"display: inline-block; text-align: left;\">");
             out.println("<form method=\"post\">"); 
-            out.println("User Name:<br>");         
+            out.println("<h1>Create Account</h1>");
+            out.println("Account Display Name:<br>");         
             out.printf("<input type=\"text\" name=\"%s\" value=\"\"><br>",AccountLogic.DISPLAY_NAME);
             out.println("<br>");
+            out.println("Account User Name:<br>");         
+            out.printf("<input type=\"text\" name=\"%s\" value=\"\"><br>",AccountLogic.USER);
+            out.println("<br>");
             
-            out.println("Password:<br>");         
+            out.println("Account Password:<br>");         
             out.printf("<input type=\"text\" name=\"%s\" value=\"\"><br>",AccountLogic.PASSWORD);
             out.println("<br>");
             out.println("<input type=\"submit\" name=\"view\" value=\"Add and View\">");
             out.println("<input type=\"submit\" name=\"add\" value=\"Add\">");   
             out.println("</form>");
-            if(errorMessage!=null && errorMessage.isEmpty()){
+            if(errorMessage!=null && !errorMessage.isEmpty()){
                 out.println("<p color=red>");
                 out.println("<font color=red size=4px>");
                 out.println(errorMessage);
@@ -120,19 +124,25 @@ public class CreateAccount extends HttpServlet {
 
         //grab the parameter NAME first
         String username = request.getParameter( AccountLogic.USER);
-        //since it is unique we check for duplicates.
-        if(aLogic.getAccountWithUser(username)==null){
-            //if no duplicates create the entity and add it.
-            Account account = aLogic.createEntity( request.getParameterMap());
-            aLogic.add( account);
-        }else{
-            //if duplicate print the error message
-            errorMessage = "Account: \"" + username + "\" already exists";
-        }
+        String displayN = request.getParameter(AccountLogic.DISPLAY_NAME);
         
+        //since it is unique we check for duplicates.       
         if( request.getParameter("add")!=null){
             //if add button is pressed return the same page
+            if(aLogic.getAccountWithUser(username)==null){
+                //if no duplicates create the entity and add it.
+                try{
+                    Account account = aLogic.createEntity(request.getParameterMap());
+                    aLogic.add( account);
+                }catch(RuntimeException e){
+                    errorMessage = e.getMessage();
+                }
+            }else{
+                //if duplicate print the error message
+                errorMessage = "Account: \"" + username + "\" already exists";
+            }
             processRequest(request, response);
+            
         }else if (request.getParameter("view")!=null) {
             //if view button is pressed redirect to the appropriate table
             response.sendRedirect("AccountTable");

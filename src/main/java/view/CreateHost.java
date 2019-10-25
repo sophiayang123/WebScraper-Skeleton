@@ -34,16 +34,18 @@ public class CreateHost extends HttpServlet {
         response.setContentType("text/html;charset=UTF-8");
         try (PrintWriter out = response.getWriter()) {
             /* TODO output your page here. You may use following sample code. */
+
             out.println("<!DOCTYPE html>");
             out.println("<html>");
             out.println("<head>");
-            out.println("<title>Create Feed</title>");
+            out.println("<title>Create Feed</title>");          
             out.println("</head>");
             out.println("<body>");
             out.println("<div style=\"text-align: center;\">");
             out.println("<div style=\"display: inline-block; text-align: left;\">");
             out.println("<form method=\"post\">");
-            out.println("Name:<br>");
+            out.println("<h1>Create Feed</h1>");
+            out.println("Host Name:<br>");
             //instead of typing the name of column manualy use the static vraiable in logic
             //use the same name as column id of the table. will use this name to get date
             //from parameter map.

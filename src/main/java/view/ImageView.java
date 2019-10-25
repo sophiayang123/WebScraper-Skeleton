@@ -1,4 +1,4 @@
-/*
+ /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
@@ -6,22 +6,24 @@
 package view;
 
 import common.FileUtility;
+import entity.Feed;
 import entity.Image;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.List;
-import javax.servlet.ServletContext;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import logic.FeedLogic;
 import logic.ImageLogic;
+import scraper.Post;
 import scraper.Scraper;
+import scraper.Sort;
+
 
 /**
  *
@@ -30,8 +32,6 @@ import scraper.Scraper;
 @WebServlet(name = "ImageView", urlPatterns = {"/ImageView"})
 public class ImageView extends HttpServlet {
     
-    Scraper scraper = new Scraper();
-
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
      * methods.
@@ -46,27 +46,21 @@ public class ImageView extends HttpServlet {
         response.setContentType("text/html;charset=UTF-8");
         try (PrintWriter out = response.getWriter()) {
             /* TODO output your page here. You may use following sample code. */
+            String cssTag="<link rel='stylesheet' type='text/css' href='style/ImageView.css'>";
             out.println("<!DOCTYPE html>");
             out.println("<html>");
             out.println("<head>");
-            out.println("<title>Servlet CreateImage</title>");            
+            out.println("<title>Servlet ImageDelivery</title>"); 
+            out.println(cssTag); 
             out.println("</head>");
             out.println("<body>");
-            
             ImageLogic ilogic = new ImageLogic();
-            List<Image> all= ilogic.getAll();
-            
-            out.println("<caption>Generated Images</caption>");
-            out.println("<table align=\"center\" border=\"0\">");
-            out.println("<table>");
-            out.println("<tbody>");
-            for (Image a : all) {
-                out.printf("<tr><td>%s</td><td>%s</td></tr>", a.getId(), a.getName());
-                out.printf("<tr><td><img src=\"%s\"  alt=\"Smiley face\" height=\"42\" width=\"42\"></td></tr>", "image/"+FileUtility.getFileName(a.getPath()) ); 
-            } 
-            
-            out.println("</tbody>");
-            out.println("</table>");
+
+            for(Image image : ilogic.getAll()){
+                out.println("<div class=\"imageContainer\">");
+                out.printf(" <img class=\"imageThumb\" src=\"image/%s\">", FileUtility.getFileName(image.getPath()));
+                out.println("</div>");
+            }
             out.println("</body>");
             out.println("</html>");
         }
@@ -76,52 +70,52 @@ public class ImageView extends HttpServlet {
     /**
      * Handles the HTTP <code>GET</code> method.
      *
-     * @param req servlet request
-     * @param resp servlet response
+     * @param request servlet request
+     * @param response servlet response
      * @throws ServletException if a servlet-specific error occurs
      * @throws IOException if an I/O error occurs
      */
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        ServletContext cntx= req.getServletContext();
-        // Get the absolute path of the image
-        String filename = System.getProperty("user.home")+"/Documents/Reddit Images/"; 
-        File file = new File(filename);
-        if (!file.exists()) {
-            if (file.mkdir()) {
-                System.out.println("Directory is created!");
-            } else {
-                System.out.println("Failed to create directory!");
-            }
-        }
-        // retrieve mimeType dynamically
-        System.out.print(filename);
-        String mime = cntx.getMimeType(filename);
         
-        if (mime == null) {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            return;
-        }
-        resp.setContentType(mime);
-        File file2 = new File(filename);
-        try(                          
-            FileInputStream in = new FileInputStream(file2);
-            ){
-            resp.setContentLength((int)file.length());
-            OutputStream out = resp.getOutputStream();
-            byte[] buf = new byte[1024];
-            int count = 0;
-            while ((count = in.read(buf)) >= 0) {
-            out.write(buf, 0, count);
-        }
-        }catch(FileNotFoundException e){
-            System.out.println(e);
-        }
+        ImageLogic iLogic = new ImageLogic();
+        FeedLogic fl = new FeedLogic();
 
-        // Copy the contents of the file to the output stream
-
-        processRequest(req, resp);
+        String filename = System.getProperty("user.home")+"/Documents/Reddit Images/" ;
+        FileUtility.createDirectory(filename);
+        
+        //create a lambda that accepts post
+        Consumer<Post> saveImage = (Post post) -> {
+            //if post is an image and SFW, and check the database if url is unique
+            if (post.isImage() && !post.isOver18() && iLogic.getImageWithPath(post.getUrl())==null) {
+                //get the path for the image which is unique
+                Map<String, String[]> map = new HashMap();
+                String path = post.getUrl();
+//                String name = filename + filename_r;
+                //what is filename here??? folder name only??? or folder name + image url?????
+                FileUtility.downloadAndSaveFile(path, filename);
+                map.put("path", new String[]{path});
+                map.put("date", new String[]{Long.toString(post.getDate().getTime())});
+                map.put("name", new String[]{post.getTitle()});        
+                Feed f = fl.getWithId(4);       
+                //map.put("feedid", new String[]{Integer.toString(feed.getHostid().getId())});              
+                Image ima = iLogic.createEntity(map);
+                
+                ima.setFeedid(f);
+                
+                //imageLogic call genericDAO and add the image info to database
+                iLogic.add( ima);
+            }
+        };   
+        
+        //create a new scraper
+        Scraper scrap = new Scraper();
+        //authenticate and set up a page for wallpaper subreddit with 5 posts soreted by HOT order
+        scrap.authenticate().buildRedditPagesConfig("Wallpaper", 5, Sort.HOT);
+        //get the next page 3 times and save the images.
+        scrap.requestNextPage().proccessNextPage(saveImage);
+        processRequest(request, response);
     }
 
     /**
@@ -134,7 +128,39 @@ public class ImageView extends HttpServlet {
      */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+            throws ServletException, IOException {       
+//        ImageLogic iLogic = new ImageLogic();
+//        Feed feed = new Feed();
+//        Image image = new Image();
+//
+//        String filename = System.getProperty("user.home")+"/Documents/Reddit Images/";
+//        FileUtility.createDirectory(filename);
+        //create a lambda that accepts post
+//        Consumer<Post> saveImage = (Post post) -> {
+            //if post is an image and SFW
+//            if (post.isImage() && !post.isOver18()) {
+                //get the path for the image which is unique
+//                Map<String, String[]> map = new HashMap();
+//                String path = post.getUrl();
+//                FileUtility.downloadAndSaveFile(path, filename);
+//                map.put("path", new String[]{path});
+//                map.put("title", new String[]{post.getTitle()});
+//                map.put("date", new String[]{Long.toString(post.getDate().getTime())});
+//                map.put("name", new String[]{FileUtility.getFileName(path)});
+//                map.put("feedid", new String[]{Integer.toString(feed.getHostid().getId())});
+//                Image ima = iLogic.createEntity(map);
+//                iLogic.add( ima);
+                //save it in img directory
+            //}
+        //};   
+        
+        //create a new scraper
+        //Scraper scrap = new Scraper();
+        //authenticate and set up a page for wallpaper subreddit with 5 posts soreted by HOT order
+        //scrap.authenticate().buildRedditPagesConfig("Wallpaper", 5, Sort.HOT);
+        //get the next page 3 times and save the images.
+        //scrap.requestNextPage().proccessNextPage(saveImage);
+        
         processRequest(request, response);
     }
 

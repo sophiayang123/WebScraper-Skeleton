@@ -49,16 +49,16 @@ public class AccountTable extends HttpServlet {
             out.println("<caption>Account</caption>");
             out.println("<tr>");
             out.println("<th>ID</th>");
+            out.println("<th>Display Name </th>");
             out.println("<th>User Name </th>");
             out.println("<th>Password </th>");
             out.println("</tr>");
                 for (Account e : entity) {
                 //for other tables replace the code bellow and use extractDataAsList
                 //in a loop to fill the data.
-                out.printf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>",
-                        e.getId(), e.getUser(), e.getPassword());
-            }        
-            
+                out.printf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+                        e.getId(),e.getDisplayName(), e.getUser(), e.getPassword());
+            }                    
             out.println("</body>");
             out.println("</html>");
         }

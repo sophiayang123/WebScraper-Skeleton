@@ -6,6 +6,7 @@
 package view;
 
 import entity.Feed;
+import entity.Host;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
@@ -16,6 +17,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import logic.FeedLogic;
+import logic.HostLogic;
 
 /**
  *
@@ -48,20 +50,20 @@ public class CreateFeed extends HttpServlet {
             out.println("<div style=\"text-align: center;\">");
             out.println("<div style=\"display: inline-block; text-align: left;\">");
             out.println("<form method=\"post\">");
-            
-            out.println("Path:<br>");
+            out.println("<h1>Create Feed</h1>");
+            out.println("Feed Path:<br>");
             out.printf("<input type=\"text\" name=\"%s\" value=\"\"><br>",FeedLogic.PATH);
             out.println("<br>");
             
-            out.println("Type:<br>");
+            out.println("Feed Type:<br>");
             out.printf("<input type=\"text\" name=\"%s\" value=\"\"><br>",FeedLogic.TYPE);
             out.println("<br>");
             
-            out.println("Name:<br>");
+            out.println("Feed Name:<br>");
             out.printf("<input type=\"text\" name=\"%s\" value=\"\"><br>",FeedLogic.NAME);
             out.println("<br>");
             
-            out.println("Host:<br>");
+            out.println("Host ID:<br>");
             out.printf("<input type=\"text\" name=\"%s\" value=\"\"><br>",FeedLogic.HOST_ID);
             out.println("<br>");
             
@@ -69,7 +71,7 @@ public class CreateFeed extends HttpServlet {
             out.println("<input type=\"submit\" name=\"add\" value=\"Add\">");
  
             out.println("</form>");
-            if( errorMessage!=null && errorMessage.isEmpty()){
+            if( errorMessage!=null && !errorMessage.isEmpty()){
                 out.println("<p color=red>");
                 out.println("<font color=red size=4px>");
                 out.println(errorMessage);
@@ -124,29 +126,30 @@ public class CreateFeed extends HttpServlet {
             throws ServletException, IOException {
         log("POST");
         FeedLogic fLogic = new FeedLogic();
+        HostLogic hlogic = new HostLogic();
         String path = request.getParameter(FeedLogic.PATH);
         String type = request.getParameter(FeedLogic.TYPE);
         String name = request.getParameter(FeedLogic.NAME);
-        String hostid = request.getParameter(FeedLogic.HOST_ID);        
-        processRequest(request, response);
-        
-        
+        String hostid = request.getParameter(FeedLogic.HOST_ID);
 
         if( request.getParameter("add")!=null){
-            if(fLogic.getHostWithName(name)==null){
-               //if no duplicates create the entity and add it.
-               try{
-                   Feed feed = fLogic.createEntity( request.getParameterMap());
-                   fLogic.add( feed);
-               }catch(RuntimeException runtimeEX){
-                   errorMessage = "Your input feed: \"" + name + "\" is not valid";
-               }
-           }else{
-               //if duplicate print the error message
-               errorMessage = "Feed: \"" + name + "\" already exists";
-           }
+            try{
+                Feed feed = fLogic.createEntity(request.getParameterMap()); 
+                if(hlogic.getWithId(Integer.valueOf(hostid))!=null){
+                   //if no duplicates create the entity and add it.                                   
+                    Host host = hlogic.getWithId(Integer.valueOf(hostid));;
+                    feed.setHostid(host);                 
+                    fLogic.add( feed);
+                }else{
+                   //if duplicate print the error message
+                   errorMessage = "Your input: host id: \"" + hostid + "\" not exists in host table";
+                }    
+            }catch(RuntimeException e){
+                errorMessage = "Inputs cannot be empaty";
+            }
             //if add button is pressed return the same page
             processRequest(request, response);
+            
         }else if(request.getParameter("view")!=null){
             //if view button is pressed redirect to the appropriate table
             response.sendRedirect("FeedTable");
